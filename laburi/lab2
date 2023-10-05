@@ -1,0 +1,68 @@
+#!/bin/bash
+
+var=0
+file=$1
+dir=$2
+shift 2
+
+#1
+
+if test -e "$file"
+    then var=$(($var+1))
+fi
+
+if test -e "$dir"
+    then var=$(($var+1))
+fi
+
+
+if test -n $1
+    then
+        var=$(($var+1))
+fi
+
+if test "$var" -gt 2
+    then
+        echo "avem destui parametrii"
+    else
+        echo "nu avem destui parametrii"
+fi
+
+#2
+
+count=0
+
+for arg in "$@"
+    do
+        if test "$arg" -gt 10
+        then
+        count=$((count+1))
+        fi
+    done
+
+echo "$count nr sunt mai mari decat 10"
+
+#3
+
+sum=0
+
+for arg in "$@"
+    do
+        sum=$((sum+"$arg"))
+    done
+
+echo "$sum este suma parametrilor"
+
+#4
+
+$(( $sum |  wc -L ))
+
+#5
+
+if test -f "$file"
+    then  echo "$count $sum"
+fi> file.txt
+
+
+
+
