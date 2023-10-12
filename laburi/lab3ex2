@@ -1,0 +1,17 @@
+#!/bin/bash
+
+count=0
+sum=0
+
+for arg in "$1"/*.txt
+    do
+        sum=$( wc -m < "$arg" )
+        echo "$arg" "$sum" >> "$2"
+        count=$((count + sum))
+    done
+
+echo  "Total" "$count" >> "$2"
+
+#Script-ul va scana acel director și pentru fiecare fișier cu extensia .txt va afla numărul de caractere și
+#va scrie în fișierul de ieșire pe câte o linie numele fișierului urmat de numărul de caractere găsit.
+#La sfârșit, în fișierul de ieșire se va scrie o linie ce va conține numărul total de caractere sub forma "TOTAL <nr caractere>"

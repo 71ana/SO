@@ -1,0 +1,20 @@
+#!/bin/bash
+
+for arg in "$1"/*.txt
+    do
+        chmod +"$2" "$arg"
+        echo "$arg"
+    done
+
+for entry in "$1"/*
+do
+    if test -d "$entry"
+       then
+       echo "$entry"
+       bash "$0" "$entry" "$2"
+    fi
+done
+
+#Script-ul va scana acel director
+#(recursiv/nerecursiv) și pentru toate fisierele cu extensia .txt va seta dreptul după cum primește ca parametru.
+#Să se scrie un shell/bash script care primește ca parametru un director și un caracter după forma:
