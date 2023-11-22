@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <time.h>
 
 int read_length(int f1)
 {
@@ -117,9 +118,34 @@ void drepturi(struct stat fis, int f2)
     }
 
 
-  int size = sprintf(string2, "drepturi de acces user: %s\ndrepturi de acces grup: %s\ndrepturi de acces altii: %s", user, grup, others);
+  int size = sprintf(string2, "drepturi de acces user: %s\ndrepturi de acces grup: %s\ndrepturi de acces altii: %s\n\n", user, grup, others);
 
   write(f2, string2, size);
+}
+
+char *secondToDateTime(long s)
+{
+  struct tm *timeinfo;
+  char *buff = (char*)malloc(21 * sizeof(char));
+
+  if(buff == NULL)
+    {
+      perror("malloc");
+      exit(EXIT_FAILURE);
+    }
+
+  timeinfo = gmtime(&s);
+
+  if(timeinfo == NULL)
+    {
+      perror("gmtime");
+      free(buff);
+      exit(EXIT_FAILURE);
+    }
+
+  strftime(buff, 21, "%Y-%m-%d %H:%M:%S", timeinfo);
+
+  return buff;
 }
 
 
@@ -153,6 +179,7 @@ int main(int arg, char *argv[])
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
 	{
 	  char path[255];
+	  strcpy(path, "");
 	  strcat(path, argv[1]);
 	  strcat(path, "/");
 	  strcat(path, entry->d_name);
@@ -164,7 +191,7 @@ int main(int arg, char *argv[])
 	    {
 	      if(strstr(entry->d_name, ".bmp") != 0)
 		{
-	      //fisier obisnuit cu extensia .bmp
+		  //fisier obisnuit cu extensia .bmp
 		  int f1 = open(path, O_RDONLY);
 		  if (lseek(f1, 18, SEEK_SET) == -1) {
 		    perror("Error seeking in file");
@@ -175,63 +202,56 @@ int main(int arg, char *argv[])
 		  int height  = read_length(f1);
 
 		  char string[255];
+		  strcpy(string, "");
 
-		  int size = sprintf(string, "nume fisier: %s\ninaltime: %d\nlungime: %d\ndimensiune: %ld\nidentificatorul utilizatorului: %d\ntimpul ultimei modificari: %ld\ncontorul de legaturi: %ld\n", argv[1], height, weight, fis.st_size, fis.st_uid, fis.st_mtim.tv_sec, fis.st_nlink);
+		  int size = snprintf(string, sizeof(string), "nume fisier: %s\ninaltime: %d\nlungime: %d\ndimensiune: %ld\nidentificatorul utilizatorului: %d\ntimpul ultimei modificari: %s\ncontorul de legaturi: %ld\n", entry->d_name, height, weight, fis.st_size, fis.st_uid, secondToDateTime(fis.st_mtim.tv_sec), fis.st_nlink);
 
 		  write(f2, string, size);
 
 		  drepturi(fis, f2);
 		  close(f1);
 		}
-	    }
-	  else
-	    {
-	      //fisier normal
+	      else
+		{
+		  //fisier normal
+		  char string2[255];
+		  strcpy(string2, "");
 
-	      char string[255];
+		  int size = snprintf(string2, sizeof(string2), "nume fisier: %s\ndimensiune: %ld\nidentificatorul utilizatorului: %d\ntimpul ultimei modificari: %s\ncontorul de legaturi: %ld\n", entry->d_name, fis.st_size, fis.st_uid, secondToDateTime(fis.st_mtim.tv_sec), fis.st_nlink);
 
-	      strcpy(string, "");
+		  write(f2, string2, size);
 
-	      int size = sprintf(string, "nume fisier: %s\ndimensiune: %ld\nidentificatorul utilizatorului: %d\ntimpul ultimei modificari: %ld\ncontorul de legaturi: %ld\n", argv[1], fis.st_size, fis.st_uid, fis.st_mtim.tv_sec, fis.st_nlink);
-
-	      write(f2, string, size);
-
-	      drepturi(fis, f2);
+		  drepturi(fis, f2);
+		}
 	    }
 
 	  if(S_ISLNK(fis.st_mode))
 	    {
-	      char string[255];
-	      strcpy(string, "");
+	      char string3[255];
+	      strcpy(string3, "");
 
 	      struct stat link;
 	      lstat(path, &link);
 
-	      int size = sprintf(string, "nume legatura: %s\ndimensiune legatura: %ld\ndimensiune fisier dimensiunea fisierului target: %ld\n", entry->d_name, link.st_size, link.st_size);
+	      int size = snprintf(string3, sizeof(string3), "nume legatura: %s\ndimensiune legatura: %ld\ndimensiune fisier dimensiunea fisierului target: %ld\n", entry->d_name, link.st_size, link.st_size);
 
-	      write(f2, string, size);
+	      write(f2, string3, size);
 	      drepturi(fis, f2);
 
 	    }
 
 	  if(S_ISDIR(fis.st_mode))
 	    {
-	      char string[255];
-	      strcpy(string, "");
+	      char string4[255];
+	      strcpy(string4, "");
 
-	      int size = sprintf(string, "nume director: %s\n, identificatorul utilizatorului: %d\n", entry->d_name, fis.st_uid);
-	      write(f2, string, size);
+	      int size = snprintf(string4, sizeof(string4), "nume director: %s\nidentificatorul utilizatorului: %d\n", entry->d_name, fis.st_uid);
+	      write(f2, string4, size);
 	      drepturi(fis, f2);
 	    }
 
 	}
     }
-
-
-
-
-
-
 
 
   closedir(dir);
