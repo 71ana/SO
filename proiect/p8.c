@@ -85,19 +85,69 @@ void is_fisbmp(char argv[100], char name[100], int out)
   }
 
 
-  int weight = read_length(f1);
+  int width = read_length(f1);
   int height  = read_length(f1);
 
   char string[255];
   strcpy(string, "");
 
-  int size = sprintf(string,"nume fisier: %s\ninaltime: %d\nlungime: %d\ndimensiune: %ld\nidentificatorul utilizatorului: %d\ntimpul ultimei modificari: %scontorul de legaturi: %ld\n", name, height, weight, fis.st_size, fis.st_uid, ctime(&fis.st_mtim.tv_sec), fis.st_nlink);
+  int size = sprintf(string,"nume fisier: %s\ninaltime: %d\nlungime: %d\ndimensiune: %ld\nidentificatorul utilizatorului: %d\ntimpul ultimei modificari: %scontorul de legaturi: %ld\n", name, height, width, fis.st_size, fis.st_uid, ctime(&fis.st_mtim.tv_sec), fis.st_nlink);
 
   write(out, string, size);
   drepturi(fis, out);
   close(out);
+  close(f1);
   exit(10);
 }
+
+void bmp_convert(char argv[100], char name[100]) {
+    char path[500];
+    strcpy(path, "");
+    sprintf(path, "%s/%s", argv, name);
+
+    int f = open(path, O_RDWR);
+    int width = read_length(f);
+    int height = read_length(f);
+    if (f == -1) {
+        perror("eroare deschidere fisier");
+        exit(1);
+    }
+
+    if (lseek(f, 54, SEEK_SET) == -1) {
+        perror("Error seeking in file");
+        exit(-1);
+    }
+
+    char color[3];
+    for (int i = 0; i < height*width; i++)
+      {
+	if (read(f, color, 3) == -1) {
+	  perror("eroare citire pixel\n");
+	  close(f);
+	  exit(1);
+	}
+	char gray = 0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2];
+	color[0] = gray;
+	color[1] = gray;
+	color[2] = gray;
+
+	if (lseek(f, -3, SEEK_CUR) == -1) {
+	  perror("eroare mutare inapoi\n");
+	  close(f);
+	  exit(1);
+	}
+
+	if (write(f, color, 3) == -1) {
+	  perror("eroare scriere in fisier\n");
+	  close(f);
+	  exit(1);
+	}
+      }
+
+    close(f);
+    exit(13);
+}
+
 
 void is_fis(struct stat fis, char name[100], int out)
 {
@@ -199,6 +249,17 @@ int main(int arg, char *argv[])
 		    {
 		      is_fisbmp(argv[1], entry->d_name, f2);
 		    }
+
+		  int pid2 = fork();
+		  if( pid2 < 0)
+		    {
+		      perror("Eroare");
+		      exit(1);
+		    }
+		  if(pid2 == 0)
+		    {
+		      bmp_convert(argv[1], entry->d_name);
+		    }
 		}
 	      else
 		{
@@ -252,11 +313,10 @@ int main(int arg, char *argv[])
     {
       if (WIFEXITED(status))
 	{
-	  printf("Child process %d completed with status %d\n", wpid, WEXITSTATUS(status));
+	  printf("S-a incheiat procesul cu pid-ul %d si codul %d.\n", wpid, WEXITSTATUS(status));
 	}
     }
 
-  printf("ok!!!!\n");
   closedir(dir);
   close(f2);
 
