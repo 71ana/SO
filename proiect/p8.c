@@ -106,26 +106,35 @@ void bmp_convert(char argv[100], char name[100]) {
     sprintf(path, "%s/%s", argv, name);
 
     int f = open(path, O_RDWR);
+    if (lseek(f, 18, SEEK_SET) == -1) {
+      perror("Error seeking in file");
+      exit(-1);
+    }
+
     int width = read_length(f);
     int height = read_length(f);
+
     if (f == -1) {
         perror("eroare deschidere fisier");
         exit(1);
     }
 
-    if (lseek(f, 54, SEEK_SET) == -1) {
+    if (lseek(f, 36, SEEK_SET) == -1) {
         perror("Error seeking in file");
         exit(-1);
     }
 
+    int size = height*width;
+
     char color[3];
-    for (int i = 0; i < height*width; i++)
+    for (int i = 0; i < size; i++)
       {
 	if (read(f, color, 3) == -1) {
 	  perror("eroare citire pixel\n");
 	  close(f);
 	  exit(1);
 	}
+
 	char gray = 0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2];
 	color[0] = gray;
 	color[1] = gray;
@@ -198,7 +207,6 @@ int main(int arg, char *argv[])
       printf("Usage %s %s %s\n", argv[0], argv[1], argv[2]);
       exit(-1);
     }
-  printf("ok\n");
 
   DIR *dir = opendir(argv[1]);
 
