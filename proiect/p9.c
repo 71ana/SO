@@ -83,8 +83,8 @@ void is_fisbmp(char argv[100], char name[100], int out)
     perror("Error seeking in file");
     exit(-1);
   }
-  
-  
+
+
   int width = read_length(f1);
   int height  = read_length(f1);
 
@@ -95,7 +95,6 @@ void is_fisbmp(char argv[100], char name[100], int out)
 
   write(out, string, size);
   drepturi(fis, out);
-  close(out);
   close(f1);
   exit(10);
 }
@@ -104,16 +103,16 @@ void bmp_convert(char argv[100], char name[100]) {
     char path[500];
     strcpy(path, "");
     sprintf(path, "%s/%s", argv, name);
-    
+
     int f = open(path, O_RDWR);
     if (lseek(f, 18, SEEK_SET) == -1) {
       perror("Error seeking in file");
       exit(-1);
     }
-    
+
     int width = read_length(f);
     int height = read_length(f);
-    
+
     if (f == -1) {
         perror("eroare deschidere fisier");
         exit(1);
@@ -125,7 +124,7 @@ void bmp_convert(char argv[100], char name[100]) {
     }
 
     int size = height*width;
-    
+
     char color[3];
     for (int i = 0; i < size; i++)
       {
@@ -134,25 +133,25 @@ void bmp_convert(char argv[100], char name[100]) {
 	  close(f);
 	  exit(1);
 	}
-	
+
 	char gray = 0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2];
 	color[0] = gray;
 	color[1] = gray;
 	color[2] = gray;
-	
+
 	if (lseek(f, -3, SEEK_CUR) == -1) {
 	  perror("eroare mutare inapoi\n");
 	  close(f);
 	  exit(1);
 	}
-	
+
 	if (write(f, color, 3) == -1) {
 	  perror("eroare scriere in fisier\n");
 	  close(f);
 	  exit(1);
 	}
       }
-    
+
     close(f);
     exit(13);
 }
@@ -162,12 +161,11 @@ void is_dir(struct stat fis, char name[100], int out)
   //director
   char string[500];
   strcpy(string, "");
-  
-  int size = snprintf(string, sizeof(string), "nume director: %s\nidentificatorul utilizatorului: %d\n", name, fis.st_uid);  
+
+  int size = snprintf(string, sizeof(string), "nume director: %s\nidentificatorul utilizatorului: %d\n", name, fis.st_uid);
   write(out, string, size);
-  
+
   drepturi(fis, out);
-  close(out);
   exit(5);
 }
 
@@ -176,12 +174,11 @@ void is_link(struct stat fis, char name[100], int out)
   //legatura
   char string[255];
   strcpy(string, "");
-  
+
   int size = snprintf(string, sizeof(string), "nume legatura: %s\ndimensiune legatura: %ld\ndimensiune fisier dimensiunea fisierului target: %ld\n", name, fis.st_size, fis.st_size);
-  
+
   write(out, string, size);
   drepturi(fis, out);
-  close(out);
   exit(6);
 }
 
@@ -208,10 +205,11 @@ int main(int arg, char *argv[])
       perror("eroare deschidere director iesire\n");
       exit(EXIT_FAILURE);
     }
-  
+
   char out_path[500];
   int f2;
-  
+  int total = 0;
+
   struct dirent *entry;
   while((entry = readdir(dir)) != NULL)
     {
@@ -222,12 +220,12 @@ int main(int arg, char *argv[])
 	  sprintf(path, "%s/%s", argv[1], entry->d_name);
 	  struct stat fis;
 	  lstat(path, &fis);
-	  
+
 	  strcpy(out_path, "");
 	  sprintf(out_path, "%s/%s_statistica.txt", argv[2], entry->d_name);
 
 	  f2 = open(out_path, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
-	  
+
 	  if(S_ISREG(fis.st_mode))
 	    {
 	      if(strstr(entry->d_name, ".bmp") != NULL)
@@ -258,7 +256,7 @@ int main(int arg, char *argv[])
 		{
 		  //fisier normal
 		  int pfd[2]; //pipe pentru transmiterea intre copii
-		  
+
 		  int pid;
 		  char c = argv[3][0]; //caracterul pe care il cautam in propozitii
 		  if(pipe(pfd) < 0)
@@ -276,19 +274,19 @@ int main(int arg, char *argv[])
 		      char string[500];
 		      close(pfd[0]);
 		      strcpy(string, "");
-		      
+
 		      int size = snprintf(string, sizeof(string), "nume fisier: %s\ndimensiune: %ld\nidentificatorul utilizatorului: %d\ntimpul ultimei modificari: %s\ncontorul de legaturi: %ld\n", entry->d_name, fis.st_size, fis.st_uid, ctime(&fis.st_mtim.tv_sec), fis.st_nlink);
 		      write(f2, string, size);
 		      drepturi(fis, f2);
 		      close(f2);
 		      dup2(pfd[1], 1);
 		      close(pfd[1]);
-		      
+
 		      execlp("cat", "cat", path, NULL);
 		      perror("eroare executie cat\n");
        		      exit(8);
 		    }
-		  
+
 		  int pfd2[2]; //pipe pentru transmiterea copil-parinte
 		  if(pipe(pfd2) < 0)
 		    {
@@ -305,31 +303,35 @@ int main(int arg, char *argv[])
 		    {
 		      close(pfd[1]); //urmeaza a citi din primul pipe ce e in fisier
 		      close(pfd2[0]);  //urmeaza a scrie in pipe numarul de linii corecte care contin litera data ca argument
-		      
+
 		      dup2(pfd[0], 0); //intrarea standard
 		      close(pfd[0]);
-		      
+
 		      dup2(pfd2[1], 1); //iesirea standard
 		      close(pfd2[1]);
-		      
-		      execlp("bash", "bash" , "script.sh", c, NULL);
+
+		      execlp("bash", "bash" , "script.sh", (char *)&c, NULL);
 		      exit(20);
 		    }
-		  
+
 		  close(pfd2[1]);
 		  close(pfd[0]);
 		  close(pfd[1]);
-		  
+
 		  char val[3];
-		  read(pfd2[0], val, sizeof(val));
-		  val[strlen(val)-1]='\0';
-		  printf("%s\n", val);
-		  int nr = atoi(val);
-		  printf("Au fost identificate in total %d propozitii corecte care contin caracterul %c.\n", nr, c);
+
+		  int nr = read(pfd2[0],val, sizeof(val));
+		  if(nr > 0)
+		    {
+		      val[strlen(val)-1]='\0';
+		      int nr = atoi(val);
+		      printf("Au fost identificate in total %d propozitii corecte care contin caracterul %c.\n", nr, c);
+		    }
 		  close(pfd2[0]);
+
 		}
 	    }
-	  
+
 	  if(S_ISLNK(fis.st_mode))
 	    {
 	      int pid = fork();
@@ -343,7 +345,7 @@ int main(int arg, char *argv[])
 		  is_link(fis, entry->d_name, f2);
 		}
 	    }
-	  
+
 	  if(S_ISDIR(fis.st_mode))
 	    {
 	      int pid = fork();
@@ -357,9 +359,10 @@ int main(int arg, char *argv[])
 		  is_dir(fis, entry->d_name, f2);
 		}
 	    }
+	  close(f2);
 	}
     }
-  
+
   int status;
   int wpid;
   while ((wpid = wait(&status)) != -1)
@@ -369,9 +372,9 @@ int main(int arg, char *argv[])
 	  printf("S-a incheiat procesul cu pid-ul %d si codul %d.\n", wpid, WEXITSTATUS(status));
 	}
     }
-  
+
   closedir(dir);
   close(f2);
-  
+
   return 0;
 }
